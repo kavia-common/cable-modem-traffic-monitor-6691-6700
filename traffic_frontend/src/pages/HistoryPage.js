@@ -16,7 +16,7 @@ function normalizeSeries(payload) {
   // Accept common formats:
   // 1) { series: [{ts, upload_bytes, download_bytes}...] }
   // 2) [{timestamp,...}]
-  // 3) {points:[...]}
+  // 3) {points:[{timestamp, up_bps, down_bps}]}
   const raw = payload?.series || payload?.points || payload || [];
   const arr = Array.isArray(raw) ? raw : [];
 
@@ -24,8 +24,26 @@ function normalizeSeries(payload) {
     .map((p) => {
       const ts = p.ts || p.timestamp || p.time;
       const t = typeof ts === "number" ? ts : Date.parse(ts || "") || Date.now();
-      const up = p.upload_bytes ?? p.up_bytes ?? p.upload ?? p.up ?? p.tx_bytes ?? 0;
-      const down = p.download_bytes ?? p.down_bytes ?? p.download ?? p.down ?? p.rx_bytes ?? 0;
+
+      // Support bytes-oriented payloads and bps-oriented payloads (backend stats returns bps).
+      const up =
+        p.upload_bytes ??
+        p.up_bytes ??
+        p.upload ??
+        p.up ??
+        p.tx_bytes ??
+        p.up_bps ??
+        0;
+
+      const down =
+        p.download_bytes ??
+        p.down_bytes ??
+        p.download ??
+        p.down ??
+        p.rx_bytes ??
+        p.down_bps ??
+        0;
+
       return {
         t,
         time: new Date(t).toLocaleString(),

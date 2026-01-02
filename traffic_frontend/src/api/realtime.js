@@ -19,11 +19,11 @@ export function connectRealtimeRates({ modemId, onMessage, onOpen, onError, onCl
    */
   const wsBase = toWebSocketUrl(getBackendBaseUrl());
 
-  // Prefer query-param based endpoint, commonly: /ws/realtime?modem_id=...
-  // If backend uses a path param, we also attempt /ws/realtime/<id>.
+  // Backend endpoint: /modems/{id}/realtime
+  // Keep a fallback attempt for alternate patterns if deployments differ.
   const tryUrls = [
-    `${wsBase}/ws/realtime?modem_id=${encodeURIComponent(modemId)}`,
-    `${wsBase}/ws/realtime/${encodeURIComponent(modemId)}`
+    `${wsBase}/modems/${encodeURIComponent(modemId)}/realtime`,
+    `${wsBase}/ws/realtime?modem_id=${encodeURIComponent(modemId)}`
   ];
 
   let ws = null;

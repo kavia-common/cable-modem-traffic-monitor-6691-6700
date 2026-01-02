@@ -6,7 +6,7 @@ function normalizeModemForForm(modem) {
   return {
     id: modem?.id || modem?.modem_id || "",
     name: modem?.name || modem?.label || "",
-    host: modem?.host || modem?.ip || modem?.address || "",
+    host: modem?.ip || modem?.host || modem?.address || "",
     note: modem?.note || ""
   };
 }
@@ -46,15 +46,18 @@ export function ModemsPage({ modems, refreshModems, onAfterChange }) {
     setError("");
 
     const payload = {
-      // keep flexible: backend may accept id/name/host fields
-      id: form.id || undefined,
+      // Backend expects: name, ip, status(optional). UI uses host -> ip.
       name: form.name || undefined,
-      host: form.host || undefined,
+      ip: form.host || undefined,
       note: form.note || undefined
     };
 
-    if (!payload.name && !payload.id) {
-      setError("Please provide at least a Name or ID.");
+    if (!payload.name) {
+      setError("Please provide a Name.");
+      return;
+    }
+    if (!payload.ip) {
+      setError("Please provide a Host / IP.");
       return;
     }
 

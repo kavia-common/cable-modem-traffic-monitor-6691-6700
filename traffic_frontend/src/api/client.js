@@ -42,26 +42,56 @@ async function request(path, { method = "GET", body, headers } = {}) {
 
 // PUBLIC_INTERFACE
 export const api = {
-  /** CRUD for modems */
+  /** CRUD for modems (FastAPI backend routes are rooted at /modems). */
   async listModems() {
-    return request("/api/modems");
+    return request("/modems");
   },
   async createModem(modem) {
-    return request("/api/modems", { method: "POST", body: modem });
+    // Backend expects {name, ip, status}; UI may pass {host}. Map host->ip.
+    const payload = { ...modem };
+    if (!payload.ip && payload.host) payload.ip = payload.host;
+    delete payload.host;
+    return request("/modems", { method: "POST", body: payload });
   },
   async updateModem(modemId, modem) {
-    return request(`/api/modems/${encodeURIComponent(modemId)}`, { method: "PUT", body: modem });
+    const payload = { ...modem };
+    if (!payload.ip && payload.host) payload.ip = payload.host;
+    delete payload.host;
+    return request(`/modems/${encodeURIComponent(modemId)}`, { method: "PUT", body: payload });
   },
   async deleteModem(modemId) {
-    return request(`/api/modems/${encodeURIComponent(modemId)}`, { method: "DELETE" });
+    return request(`/modems/${encodeURIComponent(modemId)}`, { method: "DELETE" });
   },
 
-  /** Historical stats (backend contract may vary slightly; we support common query patterns). */
+  /**
+   * Historical aggregated stats.
+   * Backend contract: GET /modems/{id}/stats?from=ISO&to=ISO&granularity=1m|5m|1h
+   *
+   * UI range mapping:
+   * - hour -> last 1 hour, 1m buckets
+   * - day  -> last 24 hours, 5m buckets
+   * - week -> last 7 days, 1h buckets
+   */
   async getHistoricalTraffic({ modemId, range }) {
-    // Try to align with typical "range" param usage.
-    // If backend expects different params (start/end), the UI can be adapted without touching components.
+    const now = new Date();
+    const to = now.toISOString();
+
+    let fromDate = new Date(now.getTime() - 60 * 60 * 1000);
+    let granularity = "1m";
+
+    if (range === "day") {
+      fromDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      granularity = "5m";
+    } else if (range === "week") {
+      fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      granularity = "1h";
+    }
+
     const qs = new URLSearchParams();
-    if (range) qs.set("range", range);
-    return request(`/api/modems/${encodeURIComponent(modemId)}/traffic/history?${qs.toString()}`);
+    qs.set("from", fromDate.toISOString());
+    qs.set("to", to);
+    qs.set("granularity", granularity);
+
+    return request(`/modems/${encodeURIComponent(modemId)}/stats?${qs.toString()}`);
   }
 };
